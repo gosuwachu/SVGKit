@@ -12,91 +12,31 @@
 #import "SVGDocument.h"
 #import "SVGElement+Private.h"
 #import "SVGPattern.h"
-
-@implementation SVGShapeElement
+#import "SVGGroupElement.h"
 
 #define IDENTIFIER_LEN 256
 
-@synthesize opacity = _opacity;
-
-@synthesize fillType = _fillType;
-@synthesize fillColor = _fillColor;
-@synthesize fillPattern = _fillPattern;
-
-@synthesize strokeWidth = _strokeWidth;
-@synthesize strokeColor = _strokeColor;
-
+@implementation SVGShapeElement
+@synthesize style;
 @synthesize path = _path;
 
-- (void)finalize {
-	CGPathRelease(_path);
-	[super finalize];
+- (id) initWithParent:(SVGElement *)parent {
+    self = [super initWithParent:parent];
+    if(self) {
+        style = [[SVGStyleDeclaration alloc] init];
+    }
+    return self;
 }
 
 - (void)dealloc {
+    [style release];
 	CGPathRelease(_path);
-    [_fillPattern release];
-    
 	[super dealloc];
-}
-
-- (void)loadDefaults {
-	_opacity = 1.0f;
-	
-	_fillColor = SVGColorMake(0, 0, 0, 255);
-	_fillType = SVGFillTypeSolid;
 }
 
 - (void)parseAttributes:(NSDictionary *)attributes {
 	[super parseAttributes:attributes];
-	
-	id value = nil;
-	
-	if ((value = [attributes objectForKey:@"opacity"])) {
-		_opacity = [value floatValue];
-	}
-	
-	if ((value = [attributes objectForKey:@"fill"])) {
-		const char *cvalue = [value UTF8String];
-		
-		if (!strncmp(cvalue, "none", 4)) {
-			_fillType = SVGFillTypeNone;
-		}
-		else if (!strncmp(cvalue, "url", 3)) {
-			NSLog(@"Gradients are no longer supported");
-			_fillType = SVGFillTypeNone;
-		}
-		else {
-			_fillColor = SVGColorFromString([value UTF8String]);
-			_fillType = SVGFillTypeSolid;
-		}
-	}
-	
-	if ((value = [attributes objectForKey:@"stroke-width"])) {
-		_strokeWidth = [value floatValue];
-	}
-	
-	if ((value = [attributes objectForKey:@"stroke"])) {
-		const char *cvalue = [value UTF8String];
-		
-		if (!strncmp(cvalue, "none", 4)) {
-			_strokeWidth = 0.0f;
-		}
-		else {
-			_strokeColor = SVGColorFromString(cvalue);
-			
-			if (!_strokeWidth)
-				_strokeWidth = 1.0f;
-		}
-	}
-	
-	if ((value = [attributes objectForKey:@"stroke-opacity"])) {
-		_strokeColor.a = (uint8_t) ([value floatValue] * 0xFF);
-	}
-	
-	if ((value = [attributes objectForKey:@"fill-opacity"])) {
-		_fillColor.a = (uint8_t) ([value floatValue] * 0xFF);
-	}
+    [style parseAttributes:attributes];
 }
 
 - (void)loadPath:(CGPathRef)aPath {
@@ -110,53 +50,55 @@
 	}
 }
 
-- (CALayer *)layer {
-	CAShapeLayer *shape = [CAShapeLayer layer];
-	shape.name = self.identifier;
-	shape.opacity = _opacity;
-	
-#if OUTLINE_SHAPES
-	
-#if TARGET_OS_IPHONE
-	shape.borderColor = [UIColor redColor].CGColor;
-#endif
-	
-	shape.borderWidth = 1.0f;
-#endif
-	
-    CGRect rect = CGRectIntegral(CGPathGetPathBoundingBox(_path));
-	
-	CGPathRef path = CGPathCreateByOffsettingPath(_path, rect.origin.x, rect.origin.y);
-	
-	shape.path = path;
-	CGPathRelease(path);
-	
-	shape.frame = rect;
-	
-	if (_strokeWidth) {
-		shape.lineWidth = _strokeWidth;
-		shape.strokeColor = CGColorWithSVGColor(_strokeColor);
-	}
-	
-	if (_fillType == SVGFillTypeNone) {
-		shape.fillColor = nil;
-	}
-	else if (_fillType == SVGFillTypeSolid) {
-		shape.fillColor = CGColorWithSVGColor(_fillColor);
-	}
+- (void) drawInContext:(CGContextRef)context {
+    [style applyStyle:context];
+    CGContextAddPath(context, _path);
     
-    if (nil != _fillPattern) {
-        shape.fillColor = [_fillPattern CGColor];
+    if (style.fillType == SVGFillTypeNone) {
+        CGContextDrawPath(context, kCGPathStroke);
+	} else if (style.fillType == SVGFillTypeSolid) {
+        if(style.strokeWidth) {
+            CGContextDrawPath(context, kCGPathFillStroke);
+        } else {
+            CGContextDrawPath(context, kCGPathFill);
+        }
     }
-	
-	if ([shape respondsToSelector:@selector(setShouldRasterize:)]) {
-		[shape performSelector:@selector(setShouldRasterize:)
-					withObject:[NSNumber numberWithBool:YES]];
-	}
-	
-	return shape;
 }
 
-- (void)layoutLayer:(CALayer *)layer { }
+- (SVGElement*) getElementAtPosition:(CGPoint)aPosition {
+    CGAffineTransform transform = CGAffineTransformIdentity;
+    if([self.parent isKindOfClass:[SVGGroupElement class]]) {
+        SVGGroupElement* parent = (SVGGroupElement*)self.parent;
+        transform = CGAffineTransformInvert([parent getTransformation]);
+    }
+
+    if(CGPathContainsPoint(_path, &transform, aPosition, NO)) {
+        return self;
+    } else {
+        return nil;
+    }
+}
+
+- (CGRect) getBoundingBox {
+    CGAffineTransform transform = CGAffineTransformIdentity;
+    if([self.parent isKindOfClass:[SVGGroupElement class]]) {
+        SVGGroupElement* parent = (SVGGroupElement*)self.parent;
+        transform = CGAffineTransformInvert([parent getTransformation]);
+    }
+    
+    CGRect boundingBox = CGRectZero;
+    
+    CGPathRef transformedPath = CGPathCreateCopyByTransformingPath(_path, &transform);
+    boundingBox = CGPathGetBoundingBox(transformedPath);
+    CGPathRelease(transformedPath);
+    
+    return boundingBox;
+}
+
+#pragma SVGStylableProtocol
+- (SVGStyleDeclaration*) styleDeclaration
+{
+    return style;
+}
 
 @end

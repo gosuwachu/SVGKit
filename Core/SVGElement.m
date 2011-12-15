@@ -7,21 +7,10 @@
 
 #import "SVGElement.h"
 
-@interface SVGElement ()
-
-@property (nonatomic, copy) NSString *stringValue;
-
-@end
-
-
 @implementation SVGElement
 
-@synthesize document = _document;
-
+@synthesize parent = _parent;
 @synthesize children = _children;
-@synthesize stringValue = _stringValue;
-@synthesize localName = _localName;
-
 @synthesize identifier = _identifier;
 
 + (BOOL)shouldStoreContent {
@@ -33,26 +22,38 @@
     if (self) {
 		[self loadDefaults];
         _children = [[NSMutableArray alloc] init];
+        wasAttachedAtPosition = -1;
     }
     return self;
 }
 
-- (id)initWithDocument:(SVGDocument *)aDocument name:(NSString *)name {
+- (id)initWithParent:(SVGElement*)aParent {
 	self = [self init];
 	if (self) {
-		_document = aDocument;
-		_localName = [name retain];
+        _parent = aParent;
 	}
 	return self;
 }
 
 - (void)dealloc {
 	[_children release];
-	[_stringValue release];
-	[_localName release];
 	[_identifier release];
 	
 	[super dealloc];
+}
+
+- (void) deattachFromParent {
+    if(_parent) {
+        wasAttachedAtPosition = [_parent.children indexOfObject:self];
+        [_parent.children removeObject:self];
+    }
+}
+
+- (void) attachToParent {
+    if(_parent && wasAttachedAtPosition >=0) {
+        [_parent.children insertObject:self atIndex:wasAttachedAtPosition];
+        wasAttachedAtPosition = -1;
+    }
 }
 
 - (void)loadDefaults {
@@ -75,12 +76,50 @@
 }
 
 - (void)parseContent:(NSString *)content {
-	self.stringValue = content;
 }
 
 - (NSString *)description {
-	return [NSString stringWithFormat:@"<%@ %p | id=%@ | localName=%@ | stringValue=%@ | children=%d>", 
-			[self class], self, _identifier, _localName, _stringValue, [_children count]];
+	return [NSString stringWithFormat:@"<%@ %p | children=%d | id=%@>", 
+			[self class], self, [_children count], _identifier];
+}
+
+- (void) drawInContext:(CGContextRef)context {
+    for(SVGElement* element in self.children) {
+        [element drawInContext:context];
+    }
+}
+
+- (SVGElement*) findElementWithIdentifier:(NSString*)aIdentifier {
+    if([_identifier isEqualToString:aIdentifier]) {
+        return self;
+    }
+    for(SVGElement* element in _children) {
+        SVGElement* found = [element findElementWithIdentifier:aIdentifier];
+        if(found) {
+            return found;
+        }
+    }
+    return nil;
+}
+
+- (SVGElement*) getElementAtPosition:(CGPoint)aPosition {
+    SVGElement* topElement = nil;
+    for(SVGElement* element in _children) {
+        SVGElement* found = [element getElementAtPosition:aPosition];
+        if(found) {
+            topElement = found;
+        }
+    }
+    return topElement;
+}
+
+- (CGRect) getBoundingBox {
+    CGRect boundingBox = CGRectZero;
+    for(SVGElement* element in self.children) {
+        CGRect elementBoundingBox = [element getBoundingBox];
+        boundingBox = CGRectUnion(boundingBox, elementBoundingBox);
+    }
+    return boundingBox;
 }
 
 @end

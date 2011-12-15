@@ -360,7 +360,7 @@ CGFloat SVGPercentageFromString (const char *string) {
 	return atoi(string) / 100.0f;
 }
 
-CGMutablePathRef SVGPathFromPointsInString (const char *string, boolean_t close) {
+CGMutablePathRef SVGCreatePathFromPointsInString (const char *string, boolean_t close) {
 	CGMutablePathRef path = CGPathCreateMutable();
 	
 	size_t len = strlen(string);
@@ -373,7 +373,7 @@ CGMutablePathRef SVGPathFromPointsInString (const char *string, boolean_t close)
 	for (size_t n = 0; n <= len; n++) {
 		char c = string[n];
 		
-		if (c == '\n' || c == '\t' || c == ' ' || c == ',' || c == '\0') {
+		if ((c == '\n' || c == '\t' || c == ' ' || c == ',' || c == '\0') && accumIdx > 0) {
 			accum[accumIdx] = '\0';
 			
 			static float x;

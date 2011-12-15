@@ -12,7 +12,6 @@
 	#import "SVGDefsElement.h"
 	#import "SVGDescriptionElement.h"
 	#import "SVGDocument.h"
-	#import "SVGDocument+CA.h"
 	#import "SVGElement.h"
 	#import "SVGEllipseElement.h"
 	#import "SVGGroupElement.h"
@@ -26,14 +25,12 @@
 	#import "SVGTitleElement.h"
 	#import "SVGUtils.h"
 	#import "SVGView.h"
-    #import "SVGPathView.h"
     #import "SVGPattern.h"
 #else
 	#import <SVGKit/SVGCircleElement.h>
 	#import <SVGKit/SVGDefsElement.h>
 	#import <SVGKit/SVGDescriptionElement.h>
 	#import <SVGKit/SVGDocument.h>
-	#import <SVGKit/SVGDocument+CA.h>
 	#import <SVGKit/SVGElement.h>
 	#import <SVGKit/SVGEllipseElement.h>
 	#import <SVGKit/SVGGroupElement.h>

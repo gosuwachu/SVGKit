@@ -5,35 +5,35 @@
 //  Copyright Matt Rajca 2010-2011. All rights reserved.
 //
 
-#import <QuartzCore/QuartzCore.h>
-
 @class SVGDocument;
 
-@interface SVGElement : NSObject {
-  @private
-	NSMutableArray *_children;
+@interface SVGElement : NSObject 
+{
+    NSMutableArray *_children;
+    int wasAttachedAtPosition;
 }
-
-@property (nonatomic, readonly) __weak SVGDocument *document;
-
-@property (nonatomic, readonly) NSArray *children;
-@property (nonatomic, readonly, copy) NSString *stringValue;
-@property (nonatomic, readonly) NSString *localName;
+@property (nonatomic, readonly) SVGElement* parent;
+@property (nonatomic, readonly) NSMutableArray *children;
 
 @property (nonatomic, readwrite, retain) NSString *identifier; // 'id' is reserved
 
-+ (BOOL)shouldStoreContent; // to optimize parser, default is NO
+// to optimize parser, default is NO
++ (BOOL)shouldStoreContent; 
 
-- (id)initWithDocument:(SVGDocument *)aDocument name:(NSString *)name;
+- (id)initWithParent:(SVGElement*)parent;
 
-- (void)loadDefaults; // should be overriden to set element defaults
+- (void) deattachFromParent;
+- (void) attachToParent;
 
-@end
+// should be overriden to set element defaults
+- (void)loadDefaults;
 
+- (void) drawInContext:(CGContextRef)context;
 
-@protocol SVGLayeredElement < NSObject >
+- (SVGElement*) findElementWithIdentifier:(NSString*)aIdentifier;
 
-- (CALayer *)layer;
-- (void)layoutLayer:(CALayer *)layer;
+- (SVGElement*) getElementAtPosition:(CGPoint)aPosition;
+
+- (CGRect) getBoundingBox;
 
 @end

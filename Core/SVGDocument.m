@@ -20,8 +20,6 @@
 
 - (BOOL)parseFileAtPath:(NSString *)aPath;
 
-- (SVGElement *)findFirstElementOfClass:(Class)class;
-
 @end
 
 
@@ -30,8 +28,6 @@
 @synthesize width = _width;
 @synthesize height = _height;
 @synthesize version = _version;
-
-@synthesize graphicsGroups;
 
 @dynamic title, desc, defs;
 
@@ -54,10 +50,7 @@
 	NSString *path = [bundle pathForResource:newName ofType:extension];
 	
 	if (!path)
-	{
-		NSLog(@"[%@] MISSING FILE, COULD NOT CREATE DOCUMENT: filename = %@, extension = %@", [self class], newName, extension);
 		return nil;
-	}
 	
 	return [self documentWithContentsOfFile:path];
 }
@@ -69,13 +62,11 @@
 - (id)initWithContentsOfFile:(NSString *)aPath {
 	NSParameterAssert(aPath != nil);
 	
-	self = [super initWithDocument:self name:@"svg"];
+	self = [super initWithParent:nil];
 	if (self) {
 		_width = _height = 100;
 		
 		if (![self parseFileAtPath:aPath]) {
-			NSLog(@"[%@] MISSING FILE, COULD NOT CREATE DOCUMENT: path = %@", [self class], aPath);
-			
 			[self release];
 			return nil;
 		}
@@ -85,7 +76,7 @@
 
 - (id) initWithFrame:(CGRect)frame
 {
-    self = [super initWithDocument:self name:@"svg"];
+    self = [super initWithParent:nil];
 	if (self) {
         _width = CGRectGetWidth(frame);
         _height = CGRectGetHeight(frame);
@@ -115,36 +106,6 @@
 	return YES;
 }
 
-- (CALayer *)layer {
-	CALayer *layer = [CALayer layer];
-	layer.frame = CGRectMake(0.0f, 0.0f, _width, _height);
-	
-	return layer;
-}
-
-- (void)layoutLayer:(CALayer *)layer { }
-
-- (SVGElement *)findFirstElementOfClass:(Class)class {
-	for (SVGElement *element in self.children) {
-		if ([element isKindOfClass:class])
-			return element;
-	}
-	
-	return nil;
-}
-
-- (NSString *)title {
-	return [self findFirstElementOfClass:[SVGTitleElement class]].stringValue;
-}
-
-- (NSString *)desc {
-	return [self findFirstElementOfClass:[SVGDescriptionElement class]].stringValue;
-}
-
-- (SVGDefsElement *)defs {
-	return (SVGDefsElement *) [self findFirstElementOfClass:[SVGDefsElement class]];
-}
-
 - (void)parseAttributes:(NSDictionary *)attributes {
 	[super parseAttributes:attributes];
 	
@@ -162,33 +123,5 @@
 		self.version = value;
 	}
 }
-
-#if NS_BLOCKS_AVAILABLE
-
-- (void) applyAggregator:(SVGElementAggregationBlock)aggregator toElement:(SVGElement < SVGLayeredElement > *)element
-{
-	if (![element.children count]) {
-		return;
-	}
-	
-	for (SVGElement *child in element.children) {
-		if ([child conformsToProtocol:@protocol(SVGLayeredElement)]) {
-			SVGElement<SVGLayeredElement>* layeredElement = (SVGElement<SVGLayeredElement>*)child;
-            if (layeredElement) {
-                aggregator(layeredElement);
-                
-                [self applyAggregator:aggregator
-                            toElement:layeredElement];
-            }
-		}
-	}
-}
-
-- (void) applyAggregator:(SVGElementAggregationBlock)aggregator
-{
-    [self applyAggregator:aggregator toElement:self];
-}
-
-#endif
 
 @end

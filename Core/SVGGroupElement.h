@@ -7,8 +7,14 @@
 
 #import "SVGElement.h"
 
-@interface SVGGroupElement : SVGElement < SVGLayeredElement > { }
-
+@interface SVGGroupElement : SVGElement 
+{ 
+    NSMutableArray* transforms;
+}
+@property (atomic, readonly) NSMutableArray* transforms;
 @property (nonatomic, readonly) CGFloat opacity;
+
+- (CGAffineTransform) getTransformation;
+- (CGAffineTransform) getCurrentTransformation;
 
 @end
